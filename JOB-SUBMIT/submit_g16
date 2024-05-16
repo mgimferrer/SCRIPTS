@@ -1,0 +1,41 @@
+#!/bin/bash
+
+#################
+# Defaults
+queue="elephant"
+wall="24:00:00"
+procs=1
+Cluster_Memory=10 # In GB!!
+#################
+
+# Handle options
+while getopts "q:w:p:m:" option
+do
+    case $option in
+        p ) procs=$OPTARG ;;
+        q ) queue=$OPTARG ;;
+        w ) wall=$OPTARG ;;
+	m ) Cluster_Memory=$OPTARG ;;
+        \?) echo "Invalid option -$option"; exit 1;;
+        : ) echo "Missing option argument for -$option"; exit 1;;
+    esac
+done
+
+#Shift positional parameters
+shift $(($OPTIND-1))
+
+## CREATING LAUNCHER FILE ##
+echo " --- Submitting Gaussian 16 job: $1 ---"
+echo '#! /bin/bash -l' > $1.sh
+echo "#SBATCH -p ${queue} # possible values are all small and large" >> $1.sh
+echo "#SBATCH -N 1   # node count" >> $1.sh
+echo "#SBATCH --ntasks-per-node=${procs}" >> $1.sh # core count
+echo "#SBATCH -t ${wall}" >> $1.sh  # Walltime not enforced and only used for backfilling.
+echo "#SBATCH --mem ${Cluster_Memory}G" >> $1.sh # Memory added
+echo " " >> $1.sh 
+echo "module load g16_a03" >> $1.sh
+echo "g16 $1" >> $1.sh 
+
+## SUBMIT ##
+sbatch $1.sh
+

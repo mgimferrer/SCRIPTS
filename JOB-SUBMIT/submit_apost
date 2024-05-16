@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#################
+# Defaults
+queue="elephant"
+wall="24:00:00"
+procs=1
+Cluster_Memory=10 # In GB!!
+#################
+
+# Handle options
+while getopts "q:w:p:m:" option
+do
+    case $option in
+        p ) procs=$OPTARG ;;
+        q ) queue=$OPTARG ;;
+        w ) wall=$OPTARG ;;
+	m ) Cluster_Memory=$OPTARG ;;
+        \?) echo "Invalid option -$option"; exit 1;;
+        : ) echo "Missing option argument for -$option"; exit 1;;
+    esac
+done
+
+#Shift positional parameters
+shift $(($OPTIND-1))
+
+## CREATING LAUNCHER FILE ##
+echo " --- Submitting APOST-3D job: $1 ---"
+echo '#! /bin/bash -l' > $1.sh
+echo "#SBATCH -p ${queue} # possible values are all small and large" >> $1.sh
+echo "#SBATCH -N 1   # node count" >> $1.sh
+echo "#SBATCH --ntasks-per-node=${procs}" >> $1.sh # core count
+echo "#SBATCH --nodelist=theopc65" >> $1.sh
+echo "#SBATCH -t ${wall}" >> $1.sh  # Walltime not enforced and only used for backfilling.
+echo "#SBATCH --mem ${Cluster_Memory}G" >> $1.sh # Memory added
+echo " " >> $1.sh 
+
+echo "module load compiler/latest" >> $1.sh
+echo "module load mkl/latest" >> $1.sh
+echo " " >> $1.sh 
+
+echo "export OMP_NUM_THREADS=${procs}" >> $1.sh 
+echo "export KMP_STACKSIZE=100m" >> $1.sh 
+
+echo "/home/mgimferrer/APOST3D/apost3d ${1} > ${1}.apost" >> $1.sh 
+
+## SUBMIT ##
+sbatch $1.sh
+
